@@ -13,7 +13,7 @@ from sklearn.metrics import roc_auc_score, roc_curve, auc, label_ranking_loss
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
-EVALUATION_METRIC_VALUES = ['auc', 'rmse', 'auc-multi', 'lrl']
+EVALUATION_METRIC_VALUES = ['auc', 'rmse', 'lrl']
 
 
 def rmse(y_true, y_pred):
@@ -85,9 +85,9 @@ class ObjectSelection:
         :param predicted_ratings: Vector of predicted ratings
         :param true_ratings: Vector of true ratings
         """
-        print('Draw object selection results')
+        print('\nDraw object selection results')
         ca = accuracy_score(true_ratings, predicted_ratings)
-        print("Classification Accuracy")
+        print("\nClassification Accuracy")
         print(ca)
         print()
 
@@ -323,27 +323,12 @@ class ObjectSelection:
         ratings_true = np.asarray(ratings_true)
         ratings_predicted = np.asarray(ratings_predicted)
 
+        # Rmse
         if evaluation_metric == 'rmse':
             score = rmse(ratings_true, ratings_predicted)
             print('\nrmse: ' + str(score))
 
-        if evaluation_metric == 'auc-multi':
-            ratings_predicted_discrete = []
-
-            for predicted_rating in ratings_predicted:
-                if predicted_rating < 1.5:
-                    ratings_predicted_discrete.append(1)
-                elif predicted_rating < 2.5:
-                    ratings_predicted_discrete.append(2)
-                else:
-                    ratings_predicted_discrete.append(3)
-
-            ratings_true_binarized = label_binarize(ratings_true, classes=self.unique_ratings)
-            ratings_predicted_binarized = label_binarize(ratings_predicted_discrete, classes=self.unique_ratings)
-            score = roc_auc_score(ratings_true_binarized, ratings_predicted_binarized)
-
-            print('\nauc: ' + str(score))
-
+        # Auc
         if evaluation_metric == 'auc':
             # Data to probabilities
             max_rating = max(ratings_predicted)
@@ -353,11 +338,12 @@ class ObjectSelection:
             for r in ratings_predicted:
                 new_rating = (r - min_rating) / (max_rating - min_rating)
                 normalized_ratings.append(new_rating)
-            ratings_predicted = normalized_ratings
+            #ratings_predicted = normalized_ratings
 
             score = roc_auc_score(ratings_true, ratings_predicted)
             print('\nauc: ' + str(score))
 
+        # Label ranking loss
         if evaluation_metric == 'lrl':
             max_rating = max(ratings_predicted)
             min_rating = min(ratings_predicted)

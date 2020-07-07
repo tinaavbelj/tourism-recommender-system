@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score
 from statistics import median
 from sklearn import cluster
 from os import path
+from sklearn import linear_model
 
 from utils import get_features
 
@@ -49,7 +50,6 @@ class Classification:
 
         data = pd.read_csv(results_file, sep=',', names=['provider_id', 'image_file', 'true_rating', 'predicted_rating'])
         ids = list(data['provider_id'])[1:]
-        files = list(data['image_file'])[1:]
         true_ratings = list(data['true_rating'])[1:]
         predicted_ratings = list(data['predicted_rating'])[1:]
 
@@ -64,8 +64,6 @@ class Classification:
             true_ratings_object[provider_id].append(true_ratings[index])
             predicted_ratings_vector.append(predicted_ratings[index])
             true_ratings_vector.append(true_ratings[index])
-
-        print(predicted_ratings_vector)
 
         self.predicted_ratings_object = predicted_ratings_object
         self.true_ratings_object = true_ratings_object
@@ -134,6 +132,13 @@ class Classification:
         images_paths_object = {}
         ids_object = {}
 
+        if self.algorithm == 'knn':
+            model = KNeighborsClassifier(n_neighbors=3)
+        elif self.algorithm == 'lr':
+            model = linear_model.Lasso(alpha=0.1)
+        else:
+            model = RandomForestClassifier()
+
         for current_id in unique_ids:
             # Images for current_id to test set and other images to train set
             test_indexes = []
@@ -153,12 +158,10 @@ class Classification:
             if len(test_y) == 0:
                 continue
 
-            if self.algorithm == 'knn':
-                model = KNeighborsClassifier(n_neighbors=3)
-            else:
-                model = RandomForestClassifier()
             model.fit(train_X, train_y)
             predictions = model.predict(test_X)
+
+            print(predictions)
 
             # Save to object
             predicted_ratings_object[current_id] = predictions
@@ -224,8 +227,8 @@ class Classification:
         for index, r in enumerate(new_ratings_true):
             ratings_list[int(r) - 1].append(new_ratings_predicted[index])
 
-        min_plot_value = min(self.unique_ratings) - 0.5
-        max_plot_value = max(self.unique_ratings) + 0.5
+        min_plot_value = float(min(self.unique_ratings)) - 0.5
+        max_plot_value = float(max(self.unique_ratings)) + 0.5
 
         plt.title(title)
         plt.ylabel('Napovedana vrednost')
@@ -243,6 +246,7 @@ class Classification:
         print("\nClassification Accuracy: " + str(ca) + '\n')
 
         # Confusion matrix
+        self.unique_ratings = list(set(self.true_ratings_vector))
         cm = confusion_matrix(self.true_ratings_vector, self.predicted_ratings_vector, labels=self.unique_ratings)
         df_cm = pd.DataFrame(cm, index=self.unique_ratings, columns=self.unique_ratings)
         plt.figure(figsize=(10, 7))
