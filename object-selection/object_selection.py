@@ -240,7 +240,7 @@ class ObjectSelection:
 
     def factorization(self):
         """
-        Performs matrix factorization, saves predictions to self.predictions and mask to self.mask
+        Matrix factorization, saves predictions to self.predictions and mask to self.mask
         """
         print('\nDfmf')
         selected_features = self.selected_features
@@ -330,16 +330,6 @@ class ObjectSelection:
 
         # Auc
         if evaluation_metric == 'auc':
-            # Data to probabilities
-            max_rating = max(ratings_predicted)
-            min_rating = min(ratings_predicted)
-
-            normalized_ratings = []
-            for r in ratings_predicted:
-                new_rating = (r - min_rating) / (max_rating - min_rating)
-                normalized_ratings.append(new_rating)
-            #ratings_predicted = normalized_ratings
-
             score = roc_auc_score(ratings_true, ratings_predicted)
             print('\nauc: ' + str(score))
 
