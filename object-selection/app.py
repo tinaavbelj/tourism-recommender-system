@@ -22,8 +22,9 @@ def main():
     img_ids_vector = [int(name.split('-')[0]) for name in file_names]
     ratings_vector = [int(name.split('-')[-2]) for name in file_names]
     name_vector = [data_directory + name for name in file_names]
+    rating_thresholds = [1, 7]
 
-    ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix = load_data(data_directory, booking_file, users_file)
+    ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix = load_data(data_directory, booking_file, users_file, rating_thresholds)
 
     new_ratings = []
     for r in ratings_vector:
@@ -42,7 +43,7 @@ def main():
 
     selection = ObjectSelection(show_selection_results=True, selection_algorithm='random')
     selection.transform(ids=img_ids_vector, features=features, ratings=ratings_vector, users_ratings=ratings_matrix, users=users_matrix)
-    selection.evaluate(evaluation_metric='lrl')
+    selection.evaluate(evaluation_metric='auc')
 
 
 if __name__ == '__main__':

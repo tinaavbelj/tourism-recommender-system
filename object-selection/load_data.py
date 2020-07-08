@@ -32,19 +32,20 @@ def load_users_data(users_file):
     return users_matrix
 
 
-def load_ratings_data(booking_file, n_experiences, ids_indexes):
+def load_ratings_data(booking_file, n_experiences, ids_indexes, rating_thresholds):
     """
     Loads data for ratings to matrix
 
     :param booking_file: path to csv file with ratings
     :param n_experiences: number of all experiences
     :param ids_indexes: keys - experience ids, values - indexes for rows in matrix
+    :param rating_thresholds: array of (min) thresholds for ratings
     :returns:  ratings matrix
     """
     data_booking = pd.read_csv(booking_file, sep=';')
-    experience_ids_booking = data_booking['UserId']
-    user_ids = data_booking['Rating']
-    experience_ratings = data_booking['TimeOfDay']
+    experience_ids_booking = list(data_booking['UserId'])
+    user_ids = list(data_booking['Rating'])
+    experience_ratings = list(data_booking['TimeOfDay'])
 
     # Ratings matrix
     unique_user_ids = list(set(user_ids))
@@ -62,12 +63,14 @@ def load_ratings_data(booking_file, n_experiences, ids_indexes):
         new_user_id = current_user_id - 1
 
         for index in indexes:
-            # If this experience exists in generated pictures (Remove later)
-            if int(experience_ids_booking[index+1]) in ids_indexes.keys():  # index+1 because dataframe[0] doesn't exist
-                new_experience_id = ids_indexes[experience_ids_booking[index+1]]
-                new_rating = 1
-                if int(experience_ratings[index+1]) > 5:
-                    new_rating = 2
+            # If this experience exists in generated pictures
+            if int(experience_ids_booking[index]) in ids_indexes.keys():
+                new_experience_id = ids_indexes[experience_ids_booking[index]]
+                right_threshold_index = 0
+                for t_index, threshold in enumerate(rating_thresholds):
+                    if experience_ratings[index] >= threshold:
+                        right_threshold_index = t_index
+                new_rating = right_threshold_index + 1
                 ratings_matrix[new_user_id][new_experience_id] = new_rating
 
     return ratings_matrix
@@ -100,7 +103,7 @@ def average_images_matrix(images_indexes_for_id, n_experiences, ids_indexes, fea
     return images_matrix
 
 
-def load_data(data_directory, booking_file, users_file):
+def load_data(data_directory, booking_file, users_file, rating_thresholds):
     file_names = os.listdir(data_directory)
     img_ids_vector = [int(name.split('-')[0]) for name in file_names]
 
@@ -128,7 +131,7 @@ def load_data(data_directory, booking_file, users_file):
     # Matrix with average of all images for experience as columns
     # average_images_matrix(images_indexes_for_id, n_experiences, ids_indexes, features)
 
-    ratings_matrix = load_ratings_data(booking_file, n_experiences, ids_indexes)
+    ratings_matrix = load_ratings_data(booking_file, n_experiences, ids_indexes, rating_thresholds)
     users_matrix = load_users_data(users_file)
 
     return ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix
