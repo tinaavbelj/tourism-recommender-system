@@ -14,16 +14,15 @@ from sklearn import linear_model
 import random
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples
-
-from utils import get_features
+from utils import texts_to_vectors, divide_texts
 
 
 ALGORITHM_VALUES = ['knn', 'rf', 'lr']
 SELECTION_VALUES = ['none', 'kmeans', 'silhouette', 'random']
 
 
-class Classification:
-    def __init__(self, data_directory, features_path, algorithm='knn', feature_agglomeration=False, selection='none'):
+class ClassificationText:
+    def __init__(self, data_directory, algorithm='knn', feature_agglomeration=False, selection='none'):
         if algorithm not in ALGORITHM_VALUES:
             print('Error: wrong algorithm')
             return
@@ -31,7 +30,6 @@ class Classification:
         self.algorithm = algorithm
         self.feature_agglomeration = feature_agglomeration
         self.data_directory = data_directory
-        self.features_path = features_path
         self.selection = selection
 
         self.predicted_ratings_object = {}
@@ -39,7 +37,7 @@ class Classification:
         self.predicted_ratings_vector = []
         self.true_ratings_vector = []
         self.unique_ratings = []
-        self.images_paths_object = {}
+        self.paths_object = {}
         self.ids_object = {}
 
     def load_results(self, results_file):
@@ -92,7 +90,7 @@ class Classification:
                 csv_predicted_ratings.append(el)
             for el in self.true_ratings_object[key]:
                 csv_true_ratings.append(el)
-            for el in self.images_paths_object[key]:
+            for el in self.paths_object[key]:
                 csv_image_files.append(el)
             for el in self.ids_object[key]:
                 csv_provider_ids.append(el)
@@ -240,13 +238,14 @@ class Classification:
         if path.exists(results_file):
             self.load_results(results_file)
             return
-
         file_names = os.listdir(self.data_directory)
-        images_paths = [self.data_directory + '/' + name for name in file_names]
+        paths = [self.data_directory + '/' + name for name in file_names]
         ids_vector = [name.split('-')[0] for name in file_names]
         categories_vector = [name.split('-')[1] for name in file_names]
-        ratings_vector = [int(name.split('-')[-2]) for name in file_names]
-        features = get_features(self.features_path, images_paths)
+        ratings_vector = [int(name.split('-')[2].split('.')[0]) for name in file_names]
+        #features = texts_to_vectors(paths)
+
+        features, ratings_vector, categories_vector, ids_vector, paths = divide_texts(paths, ratings_vector, categories_vector, ids_vector, n=15)
 
         # Feature Agglomeration
         if self.feature_agglomeration:
@@ -280,7 +279,7 @@ class Classification:
         predicted_ratings_object = {}
         predicted_ratings_vector = []
         true_ratings_vector = []
-        images_paths_object = {}
+        paths_object = {}
         ids_object = {}
 
         if self.algorithm == 'knn':
@@ -301,7 +300,6 @@ class Classification:
             for index, img_id in enumerate(selected_ids_vector):
                 if img_id != current_id:
                     train_indexes.append(index)
-
             train_X = selected_features[train_indexes, :]
             test_X = features[test_indexes, :]
 
@@ -317,7 +315,7 @@ class Classification:
             # Save to object
             predicted_ratings_object[current_id] = predictions
             true_ratings_object[current_id] = test_y
-            images_paths_object[current_id] = [images_paths[test_index] for test_index in test_indexes]
+            paths_object[current_id] = [paths[test_index] for test_index in test_indexes]
             ids_object[current_id] = [ids_vector[test_index] for test_index in test_indexes]
 
             # Save to vector
@@ -329,7 +327,7 @@ class Classification:
         self.true_ratings_object = true_ratings_object
         self.predicted_ratings_vector = predicted_ratings_vector
         self.true_ratings_vector = true_ratings_vector
-        self.images_paths_object = images_paths_object
+        self.paths_object = paths_object
         self.ids_object = ids_object
 
         # Save predictions to a file
@@ -351,25 +349,25 @@ class Classification:
                 current_true = [float(i) for i in self.true_ratings_object[key]]
                 new_ratings_predicted.append(sum(current_predicted) / len(current_predicted))
                 new_ratings_true.append(sum(current_true) / len(current_true))
-                title = 'Povprečje vseh slik'
+                title = 'Povprečje vseh delov besedil'
             elif values_to_plot == 'max':
                 current_predicted = sorted([float(i) for i in self.predicted_ratings_object[key]])[-3:]
                 current_true = [float(i) for i in self.true_ratings_object[key]][-3:]
                 new_ratings_predicted.append(sum(current_predicted) / len(current_predicted))
                 new_ratings_true.append(sum(current_true) / len(current_true))
-                title = 'Povprečje najboljših 3 slik'
+                title = 'Povprečje najboljših 3 delov besedil'
             elif values_to_plot == 'min':
                 current_predicted = sorted([float(i) for i in self.predicted_ratings_object[key]])[:3]
                 current_true = [float(i) for i in self.true_ratings_object[key]][:3]
                 new_ratings_predicted.append(sum(current_predicted) / len(current_predicted))
                 new_ratings_true.append(sum(current_true) / len(current_true))
-                title = 'Povprečje najslabših 3 slik'
+                title = 'Povprečje najslabših 3 delov besedil'
             elif values_to_plot == 'median':
                 current_predicted = [float(i) for i in self.predicted_ratings_object[key]]
                 current_true = [float(i) for i in self.true_ratings_object[key]]
                 new_ratings_predicted.append(median(current_predicted))
                 new_ratings_true.append(median(current_true))
-                title = 'Mediana vseh slik'
+                title = 'Mediana vseh delov besedil'
 
         ratings_list = []
         for _ in self.unique_ratings:
