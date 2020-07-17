@@ -9,8 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import seaborn as sns; sns.set()
 from sklearn.preprocessing import label_binarize
-from sklearn.metrics import roc_auc_score, label_ranking_loss
-import math
+from sklearn.metrics import roc_auc_score, roc_curve, auc, label_ranking_loss
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
@@ -239,32 +238,6 @@ class ObjectSelection:
 
         return mask
 
-    def get_cv_masks(self, X, mask, k):
-        cv_masks = []
-
-        # Initialize new masks for each cv iteration
-        for _ in range(k):
-            new_mask = np.copy(mask)
-            cv_masks.append(new_mask)
-
-        # Fill masks for each provider
-        for j in range(X.shape[1]):
-            indexes = []
-            # Find indexes where rating != 0 and is not in the test set
-            current_provider = X[:, j]
-            for index, r in enumerate(current_provider):
-                if r != 0 and mask[index][j] != 1:
-                    indexes.append(index)
-            indexes = np.array(indexes)
-            split_indexes = np.array_split(indexes, k)
-
-            # Fill mask for each k (cv iteration)
-            for mask_index, k_indexes in enumerate(split_indexes):
-                for i in k_indexes:
-                    cv_masks[mask_index][i][j] = True
-
-        return cv_masks
-
     def factorization(self):
         """
         Matrix factorization, saves predictions to self.predictions and mask to self.mask
@@ -277,84 +250,22 @@ class ObjectSelection:
         R23 = selected_features
         R14 = self.users
 
-        # Parameters choice
-        print('\nParameters\n')
-        parameters = [2, 4, 6, 8, 10]
-        k = 3
-        cv_masks = self.get_cv_masks(self.users_ratings, mask, k)
+        t1 = fusion.ObjectType('Type 1', 10)
+        t2 = fusion.ObjectType('Type 2', 10)
+        t3 = fusion.ObjectType('Type 3', 10)
+        t4 = fusion.ObjectType('UserData', 10)
 
-        best_cv_score = math.inf
-        best_p_t1 = 0
-        best_p_t2 = 0
-        best_p_t3 = 0
-        best_p_t4 = 0
-        for p_t1 in parameters:
-            for p_t2 in parameters:
-                for p_t3 in parameters:
-                    for p_t4 in parameters:
-                        scores = []
-                        for current_cv_mask in cv_masks:
-                            t1 = fusion.ObjectType('Type 1', p_t1)
-                            t2 = fusion.ObjectType('Type 2', p_t2)
-                            t3 = fusion.ObjectType('Type 3', p_t3)
-                            t4 = fusion.ObjectType('UserData', p_t4)
-
-                            relations = [fusion.Relation(R12, t1, t2, name='Ratings'),
-                                         fusion.Relation(R23, t2, t3, name='Images'),
-                                         fusion.Relation(R14, t1, t4, name='Users')]
-                            fusion_graph = fusion.FusionGraph()
-                            fusion_graph.add_relations_from(relations)
-
-                            fuser = fusion.Dfmf(init_type="random_vcol")
-                            fusion_graph['Ratings'].mask = current_cv_mask
-                            dfmf_mod = fuser.fuse(fusion_graph)
-
-                            R12_pred = dfmf_mod.complete(fusion_graph['Ratings'])
-
-                            predictions = R12_pred
-                            mask = current_cv_mask
-                            true_values = R12
-
-                            ratings_true = []
-                            ratings_predicted = []
-
-                            for i in range(predictions.shape[0]):
-                                for j in range(predictions.shape[1]):
-                                    if mask[i][j]:
-                                        ratings_true.append(true_values[i][j])
-                                        ratings_predicted.append(predictions[i][j])
-
-                            ratings_true = np.asarray(ratings_true)
-                            ratings_predicted = np.asarray(ratings_predicted)
-
-                            # Rmse
-                            score = rmse(ratings_true, ratings_predicted)
-                            print('\nrmse: ' + str(score))
-
-                            if score <= best_cv_score:
-                                best_cv_score = score
-                                best_p_t1 = p_t1
-                                best_p_t2 = p_t2
-                                best_p_t3 = p_t3
-                                best_p_t4 = p_t4
-
-        # Predictions
-        t1 = fusion.ObjectType('Type 1', best_p_t1)
-        t2 = fusion.ObjectType('Type 2', best_p_t2)
-        t3 = fusion.ObjectType('Type 3', best_p_t3)
-        t4 = fusion.ObjectType('UserData', best_p_t4)
-
-        relations = [fusion.Relation(R12, t1, t2, name='Ratings'),
+        relations = [fusion.Relation(R12, t1, t2, name='User ratings'),
                      fusion.Relation(R23, t2, t3, name='Images'),
                      fusion.Relation(R14, t1, t4, name='Users')]
         fusion_graph = fusion.FusionGraph()
         fusion_graph.add_relations_from(relations)
 
         fuser = fusion.Dfmf(init_type="random_vcol")
-        fusion_graph['Ratings'].mask = mask
+        fusion_graph['User ratings'].mask = mask
         dfmf_mod = fuser.fuse(fusion_graph)
 
-        R12_pred = dfmf_mod.complete(fusion_graph['Ratings'])
+        R12_pred = dfmf_mod.complete(fusion_graph['User ratings'])
 
         self.predictions = R12_pred
         self.mask = mask
@@ -419,10 +330,7 @@ class ObjectSelection:
 
         # Auc
         if evaluation_metric == 'auc':
-            if len(self.unique_ratings) == 2:
-                score = roc_auc_score(ratings_true, ratings_predicted)
-            else:
-                pass
+            score = roc_auc_score(ratings_true, ratings_predicted)
             print('\nauc: ' + str(score))
 
         # Label ranking loss
