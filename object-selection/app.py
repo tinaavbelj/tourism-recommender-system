@@ -10,10 +10,11 @@ def main():
     # Parameters
     #data_directory = '../data/experience-6/'
     #features_path = '../data/features-experience-6'
-    data_directory = '../data/experience-6-mix/'
-    features_path = '../data/features-experience-6-mix'
+    data_directory = '../../data/generated-data-r-2-n-3-3/'
+    features_path = '../../data/features-generated-data-r-2-n-3-3'
     booking_file = '../data/booking.csv'
     users_file = '../data/user.csv'
+    cv_results_file = 'results/cv-generated-data-r-2-n-3-3-knn.csv'
 
     #file_to_delete = data_directory + '.DS_Store'
     #os.remove(file_to_delete)
@@ -24,25 +25,14 @@ def main():
     name_vector = [data_directory + name for name in file_names]
     rating_thresholds = [1, 7]
 
-    ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix = load_data(data_directory, booking_file, users_file, rating_thresholds)
-
-    new_ratings = []
-    for r in ratings_vector:
-        if r == 1:
-            new_ratings.append(1)
-        if r == 3:
-            new_ratings.append(2)
-        else:
-            c = random.choice([1, 2])
-            if c == 1:
-                new_ratings.append(1)
-            else:
-                new_ratings.append(2)
+    ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix = load_data(data_directory, booking_file,
+                                                                                 users_file, rating_thresholds)
 
     features = get_features(features_path, name_vector)
 
-    selection = ObjectSelection(show_selection_results=True, selection_algorithm='random')
-    selection.transform(ids=img_ids_vector, features=features, ratings=ratings_vector, users_ratings=ratings_matrix, users=users_matrix)
+    selection = ObjectSelection(show_selection_results=True, selection_algorithm='knn')
+    selection.transform(ids=img_ids_vector, features=features, ratings=ratings_vector, users_ratings=ratings_matrix,
+                        users=users_matrix, cv_results_file=cv_results_file)
     selection.evaluate(evaluation_metric='auc')
 
 

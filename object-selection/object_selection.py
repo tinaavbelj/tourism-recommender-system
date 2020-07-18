@@ -11,6 +11,7 @@ import seaborn as sns; sns.set()
 from sklearn.preprocessing import label_binarize
 from sklearn.metrics import roc_auc_score, label_ranking_loss
 import math
+from os import path
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
@@ -201,6 +202,11 @@ class ObjectSelection:
         self.ids_to_i = ids_to_i
 
     def save_data_for_factorization(self, selected_objects_i_for_ids):
+        """
+        Saves selected objects to self.selected_features
+
+        :param selected_objects_i_for_ids: selected object for each provider
+        """
         n_objects = len(selected_objects_i_for_ids.keys())
         selected_features = np.zeros((n_objects, self.features.shape[1]))
         for key in selected_objects_i_for_ids.keys():
@@ -240,6 +246,15 @@ class ObjectSelection:
         return mask
 
     def get_cv_masks(self, X, mask, k):
+        """
+        Makes k masks for cv
+
+        :param X: ratings matrix
+        :param mask: mask for primary test and train set
+        :param k: number of cv scores for each parameters combination
+
+        :returns: cv_masks (array of k masks)
+        """
         cv_masks = []
 
         # Initialize new masks for each cv iteration
@@ -265,22 +280,43 @@ class ObjectSelection:
 
         return cv_masks
 
-    def factorization(self):
+    def load_results(self, results_file):
         """
-        Matrix factorization, saves predictions to self.predictions and mask to self.mask
+        Load results
+
+        :param results_file: path to previously computed scores for cv
         """
-        print('\nDfmf')
-        selected_features = self.selected_features
-        mask = self.split_train_test(self.users_ratings, 0.2)
 
-        R12 = self.users_ratings
-        R23 = selected_features
-        R14 = self.users
+        data = pd.read_csv(results_file, sep=',',
+                           names=['p_t1', 'p_t2', 'p_t3', 'p_t4', 'score'])
+        all_p_t1 = list(data['p_t1'])[1:]
+        all_p_t2 = list(data['p_t2'])[1:]
+        all_p_t3 = list(data['p_t3'])[1:]
+        all_p_t4 = list(data['p_t4'])[1:]
+        all_scores = list(data['score'])[1:]
 
-        # Parameters choice
-        print('\nParameters\n')
-        parameters = [2, 4, 6, 8, 10]
-        k = 3
+        all_scores_np = np.array(all_scores)
+        index_max = np.argmin(all_scores_np)
+
+        return all_p_t1[index_max], all_p_t2[index_max], all_p_t3[index_max], all_p_t4[index_max]
+
+    def cross_validation(self, k, parameters, mask, R12, R23, R14, results_file):
+        """
+        Makes k masks for cv
+
+        :param k: number of cv masks for each parameter combination
+        :param parameters: array of parameters for cross validation
+        :param mask: mask for primary test and train set
+        :param R12: matrix for dfmf
+        :param R23: matrix for dfmf
+        :param R14: matrix for dfmf
+        :param results_file: file for saving cv scores
+
+        :returns: best_p_t1, best_p_t2, best_p_t3, best_p_t4 (best parameters)
+        """
+        if path.exists(results_file):
+            return self.load_results(results_file)
+
         cv_masks = self.get_cv_masks(self.users_ratings, mask, k)
 
         best_cv_score = math.inf
@@ -288,6 +324,12 @@ class ObjectSelection:
         best_p_t2 = 0
         best_p_t3 = 0
         best_p_t4 = 0
+
+        all_p_t1 = []
+        all_p_t2 = []
+        all_p_t3 = []
+        all_p_t4 = []
+        all_scores = []
         for p_t1 in parameters:
             for p_t2 in parameters:
                 for p_t3 in parameters:
@@ -329,14 +371,57 @@ class ObjectSelection:
 
                             # Rmse
                             score = rmse(ratings_true, ratings_predicted)
-                            print('\nrmse: ' + str(score))
+                            #print('\nrmse: ' + str(score))
+                            scores.append(score)
 
-                            if score <= best_cv_score:
-                                best_cv_score = score
-                                best_p_t1 = p_t1
-                                best_p_t2 = p_t2
-                                best_p_t3 = p_t3
-                                best_p_t4 = p_t4
+                        score = sum(scores) / len(scores)
+                        all_p_t1.append(p_t1)
+                        all_p_t2.append(p_t2)
+                        all_p_t3.append(p_t3)
+                        all_p_t4.append(p_t4)
+                        all_scores.append(score)
+
+                        # Save best scores to a variable
+
+                        if score <= best_cv_score:
+                            best_cv_score = score
+                            best_p_t1 = p_t1
+                            best_p_t2 = p_t2
+                            best_p_t3 = p_t3
+                            best_p_t4 = p_t4
+
+        # Save cv scores to a csv file
+        data = {'p_t1': all_p_t1,
+                'p_t2': all_p_t2,
+                'p_t3': all_p_t3,
+                'p_t4': all_p_t4,
+                'score': all_scores}
+        df = pd.DataFrame(data, columns=['p_t1', 'p_t2', 'p_t3', 'p_t4', 'score'])
+        df.to_csv(results_file)
+
+        return best_p_t1, best_p_t2, best_p_t3, best_p_t4
+
+    def factorization(self, cv_results_file):
+        """
+        Matrix factorization, saves predictions to self.predictions and mask to self.mask
+
+        :param cv_results_file: file for saving cv scores
+        """
+        print('\nDfmf')
+        selected_features = self.selected_features
+        mask = self.split_train_test(self.users_ratings, 0.2)
+
+        R12 = self.users_ratings
+        R23 = selected_features
+        R14 = self.users
+
+        # Parameters choice
+        print('\nParameters\n')
+        #parameters = [2, 4, 6, 8, 10]
+        parameters = [2, 4, 6, 8, 10]
+        k = 3
+        best_p_t1, best_p_t2, best_p_t3, best_p_t4 = self.cross_validation(k, parameters, mask, R12, R23, R14, cv_results_file)
+        print(str(best_p_t1) + ' ' + str(best_p_t2) + ' ' + str(best_p_t3) + ' ' + str(best_p_t4) + '\n')
 
         # Predictions
         t1 = fusion.ObjectType('Type 1', best_p_t1)
@@ -360,7 +445,7 @@ class ObjectSelection:
         self.mask = mask
         self.true_values = R12
 
-    def transform(self, ids, features, ratings, users_ratings, users):
+    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file):
         """
         Calculates latent matrices and saves ratings predictions
 
@@ -369,6 +454,7 @@ class ObjectSelection:
         :param ratings: vector of average ratings
         :param users_ratings: matrix of all users ratings for experiences, rows indexes corresponding to users indexes
         :param users: matrix of additional data for users
+        :param cv_results_file: ile for saving cv scores
         """
         self.ids = ids
         self.features = features
@@ -383,7 +469,7 @@ class ObjectSelection:
 
         selected_objects_i_for_ids = self.object_selection()
         self.save_data_for_factorization(selected_objects_i_for_ids)
-        self.factorization()
+        self.factorization(cv_results_file)
 
     def evaluate(self, evaluation_metric='auc'):
         """
