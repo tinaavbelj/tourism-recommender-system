@@ -229,11 +229,12 @@ class ClassificationText:
         selected_features = features[selected_images_indexes_vector, :]
         return selected_features, selected_ids_vector, selected_ratings_vector
 
-    def transform(self, results_file=''):
+    def transform(self, results_file='', short_texts_length=15):
         """
-        Classify images for each provider and save predictions
+        Classify texts for each provider and save predictions
 
         :param results_file: path to previously computed predictions
+        :param short_texts_length: length of short texts for different objects
         """
         if path.exists(results_file):
             self.load_results(results_file)
@@ -245,7 +246,7 @@ class ClassificationText:
         ratings_vector = [int(name.split('-')[2].split('.')[0]) for name in file_names]
         #features = texts_to_vectors(paths)
 
-        features, ratings_vector, categories_vector, ids_vector, paths = divide_texts(paths, ratings_vector, categories_vector, ids_vector, n=15)
+        features, ratings_vector, categories_vector, ids_vector, paths = divide_texts(paths, ratings_vector, categories_vector, ids_vector, n=short_texts_length)
 
         # Feature Agglomeration
         if self.feature_agglomeration:
@@ -408,13 +409,13 @@ class ClassificationText:
 
         # Violin plots
 
-        # Average of all images for provider
+        # Average of all texts for provider
         self.violin_plot(values_to_plot='average')
-        # Average of max 3 images for provider
+        # Average of max 3 texts for provider
         self.violin_plot(values_to_plot='max')
-        # Average of min 3 images for provider
+        # Average of min 3 texts for provider
         self.violin_plot(values_to_plot='min')
-        # Median of all images for provider
+        # Median of all texts for provider
         self.violin_plot(values_to_plot='median')
 
 

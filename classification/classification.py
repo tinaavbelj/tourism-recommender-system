@@ -19,7 +19,7 @@ from utils import get_features
 
 
 ALGORITHM_VALUES = ['knn', 'rf', 'lr']
-SELECTION_VALUES = ['none', 'kmeans', 'silhouette', 'random']
+SELECTION_VALUES = ['none', 'kmeans', 'silhouette', 'random', 'score']
 
 
 class Classification:
@@ -231,6 +231,21 @@ class Classification:
         selected_features = features[selected_images_indexes_vector, :]
         return selected_features, selected_ids_vector, selected_ratings_vector
 
+    def selection_score(self, ids_vector, ratings_vector, features):
+        """
+        Select 6 images with the most accurate classification prediction for every hotel
+
+        :param ids_vector: Array of ids
+        :param ratings_vector: Array of ratings
+        :param features: Matrix of features
+        :return: selected_features, selected_ids_vector, selected_ratings_vector
+        """
+
+        selected_ids_vector = []
+        selected_ratings_vector = []
+        selected_features = []
+        return selected_features, selected_ids_vector, selected_ratings_vector
+
     def transform(self, results_file=''):
         """
         Classify images for each provider and save predictions
@@ -276,6 +291,10 @@ class Classification:
                                                                                                     ratings_vector,
                                                                                                     features,
                                                                                                     categories_vector)
+        elif self.selection == 'score':
+            selected_features, selected_ids_vector, selected_ratings_vector = self.selection_score(ids_vector,
+                                                                                                    ratings_vector,
+                                                                                                    features)
         true_ratings_object = {}
         predicted_ratings_object = {}
         predicted_ratings_vector = []
