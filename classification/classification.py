@@ -14,6 +14,8 @@ from sklearn import linear_model
 import random
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples
+from sklearn.model_selection import train_test_split
+import numpy as np
 
 from utils import get_features
 
@@ -231,19 +233,35 @@ class Classification:
         selected_features = features[selected_images_indexes_vector, :]
         return selected_features, selected_ids_vector, selected_ratings_vector
 
-    def selection_score(self, ids_vector, ratings_vector, features):
+    def selection_score(self, X, y, ids_vector):
         """
-        Select 6 images with the most accurate classification prediction for every hotel
+        Select images with accurate classification prediction
 
-        :param ids_vector: Array of ids
-        :param ratings_vector: Array of ratings
-        :param features: Matrix of features
+        :param X: features
+        :param y: ratings
+        :param ids_vector: ids
         :return: selected_features, selected_ids_vector, selected_ratings_vector
         """
+        indices = np.arange(len(ids_vector))
+        X_train, X_test, y_train, y_test, i_train, i_test = train_test_split(X, y, indices, test_size=0.4)
+        model = KNeighborsClassifier()
+        model.fit(X_train, y_train)
+        predicted = model.predict(X_test)
+
+        correct_indexes = []
+        for index, p in enumerate(predicted):
+            if p == y_train[index]:
+                correct_indexes.append(index)
+
+        selected_features = X_train[correct_indexes, :]
+        selected_ratings_vector = []
+        for ind in correct_indexes:
+            selected_ratings_vector.append(y_train[ind])
 
         selected_ids_vector = []
-        selected_ratings_vector = []
-        selected_features = []
+        for ind in correct_indexes:
+            selected_ids_vector.append(ids_vector[i_test[ind]])
+
         return selected_features, selected_ids_vector, selected_ratings_vector
 
     def transform(self, results_file=''):
@@ -291,10 +309,7 @@ class Classification:
                                                                                                     ratings_vector,
                                                                                                     features,
                                                                                                     categories_vector)
-        elif self.selection == 'score':
-            selected_features, selected_ids_vector, selected_ratings_vector = self.selection_score(ids_vector,
-                                                                                                    ratings_vector,
-                                                                                                    features)
+
         true_ratings_object = {}
         predicted_ratings_object = {}
         predicted_ratings_vector = []
@@ -316,6 +331,12 @@ class Classification:
             for index, img_id in enumerate(ids_vector):
                 if img_id == current_id:
                     test_indexes.append(index)
+
+            if self.selection == 'score':
+                X = features[train_indexes, :]
+                y = [ratings_vector[j] for j in train_indexes]
+                train_ids_vector = y = [ids_vector[j] for j in train_indexes]
+                selected_features, selected_ids_vector, selected_ratings_vector = self.selection_score(X, y, train_ids_vector)
 
             for index, img_id in enumerate(selected_ids_vector):
                 if img_id != current_id:
