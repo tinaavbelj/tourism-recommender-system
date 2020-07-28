@@ -12,6 +12,7 @@ from sklearn.preprocessing import label_binarize
 from sklearn.metrics import roc_auc_score, label_ranking_loss
 import math
 from os import path
+import copy
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
@@ -259,7 +260,7 @@ class ObjectSelection:
 
         # Initialize new masks for each cv iteration
         for _ in range(k):
-            new_mask = np.copy(mask)
+            new_mask = copy.deepcopy(mask)
             cv_masks.append(new_mask)
 
         # Fill masks for each provider
@@ -271,6 +272,7 @@ class ObjectSelection:
                 if r != 0 and mask[index][j] != 1:
                     indexes.append(index)
             indexes = np.array(indexes)
+            random.shuffle(indexes)
             split_indexes = np.array_split(indexes, k)
 
             # Fill mask for each k (cv iteration)
@@ -418,7 +420,7 @@ class ObjectSelection:
         # Parameters choice
         print('\nParameters\n')
         #parameters = [2, 4, 6, 8, 10]
-        parameters = [2, 4, 6, 8, 10]
+        parameters = [2, 4, 6, 8, 10, 12]
         k = 3
         best_p_t1, best_p_t2, best_p_t3, best_p_t4 = self.cross_validation(k, parameters, mask, R12, R23, R14, cv_results_file)
         print(str(best_p_t1) + ' ' + str(best_p_t2) + ' ' + str(best_p_t3) + ' ' + str(best_p_t4) + '\n')
