@@ -13,6 +13,7 @@ from sklearn.metrics import roc_auc_score, label_ranking_loss
 import math
 from os import path
 import copy
+from preselection import Preselection
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
@@ -321,7 +322,8 @@ class ObjectSelection:
 
         cv_masks = self.get_cv_masks(self.users_ratings, mask, k)
 
-        best_cv_score = math.inf
+        #best_cv_score = math.inf
+        best_cv_score = 0
         best_p_t1 = 0
         best_p_t2 = 0
         best_p_t3 = 0
@@ -372,7 +374,8 @@ class ObjectSelection:
                             ratings_predicted = np.asarray(ratings_predicted)
 
                             # Rmse
-                            score = rmse(ratings_true, ratings_predicted)
+                            score = roc_auc_score(ratings_true, ratings_predicted)
+                            #score = rmse(ratings_true, ratings_predicted)
                             #print('\nrmse: ' + str(score))
                             scores.append(score)
 
@@ -385,7 +388,7 @@ class ObjectSelection:
 
                         # Save best scores to a variable
 
-                        if score <= best_cv_score:
+                        if score >= best_cv_score:
                             best_cv_score = score
                             best_p_t1 = p_t1
                             best_p_t2 = p_t2
@@ -447,7 +450,7 @@ class ObjectSelection:
         self.mask = mask
         self.true_values = R12
 
-    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file):
+    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file, images_indexes, true_objects_indexes, false_objects_indexes, paths):
         """
         Calculates latent matrices and saves ratings predictions
 
@@ -458,6 +461,10 @@ class ObjectSelection:
         :param users: matrix of additional data for users
         :param cv_results_file: ile for saving cv scores
         """
+        if self.selection_algorithm != 'random':
+            preselection = Preselection(true_objects_indexes, false_objects_indexes)
+            ids, features, ratings = preselection.transform(paths, ids, ratings, features)
+
         self.ids = ids
         self.features = features
         self.ratings = ratings

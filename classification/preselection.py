@@ -13,9 +13,6 @@ from sklearn.model_selection import KFold
 
 from utils import get_features
 
-
-ALGORITHM_VALUES = ['knn', 'rf', 'lr']
-SELECTION_VALUES = ['none', 'kmeans', 'silhouette', 'random', 'score']
 E = 0.001
 MAX_IT = 10
 
