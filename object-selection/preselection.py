@@ -1,18 +1,12 @@
 import seaborn as sns; sns.set()
-import os
 from sklearn.neighbors import KNeighborsClassifier
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 import seaborn as sns; sns.set()
 import pandas as pd
 from sklearn.metrics import accuracy_score
-from statistics import median
-from os import path
 import random
 from sklearn.model_selection import KFold
 import numpy as np
-
-from utils import get_features
+import copy
 
 E = 0.001
 MAX_IT = 10
@@ -160,14 +154,30 @@ class Preselection:
                 current_ca = accuracy_score(current_test_y, predicted)
                 kfolds_ca.append(current_ca)
                 correct_indexes = correct_indexes + [test_index[index] for index, p in enumerate(predicted) if p == current_test_y[index]]
+
             ca_new = sum(kfolds_ca) / len(kfolds_ca)
             print('-')
             print(len(correct_indexes))
             print(ca_new)
             print('-')
+
+            previous_ids = copy.deepcopy(ids)
+            ids = [x for index, x in enumerate(ids) if index in correct_indexes]
+            # Check if any of the provider's images were all left out
+            missing_ids = [x for x in previous_ids if x not in ids]
+            missing_ids = list(set(missing_ids))
+            # Add one image for the left out provider
+            missing_indexes = []
+            for missing_id in missing_ids:
+                # Find image from previous iteration
+                index_to_add = previous_ids.index(missing_id)
+                missing_indexes.append(index_to_add)
+
+            correct_indexes = correct_indexes + missing_indexes
+            ids = [x for index, x in enumerate(ids) if index in correct_indexes]
             X = X[correct_indexes]
             y = [x for index, x in enumerate(y) if index in correct_indexes]
-            ids = [x for index, x in enumerate(ids) if index in correct_indexes]
+
             #train_images_indexes = [x for index, x in enumerate(train_images_indexes) if index in correct_indexes]
             current_it += 1
 

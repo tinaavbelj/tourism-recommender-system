@@ -66,11 +66,12 @@ def load_ratings_data(booking_file, n_experiences, ids_indexes, rating_threshold
             # If this experience exists in generated pictures
             if int(experience_ids_booking[index]) in ids_indexes.keys():
                 new_experience_id = ids_indexes[experience_ids_booking[index]]
-                right_threshold_index = 0
-                for t_index, threshold in enumerate(rating_thresholds):
-                    if experience_ratings[index] >= threshold:
-                        right_threshold_index = t_index
-                new_rating = right_threshold_index + 1
+                #right_threshold_index = 0
+                #for t_index, threshold in enumerate(rating_thresholds):
+                #    if experience_ratings[index] >= threshold:
+                #        right_threshold_index = t_index
+                #new_rating = right_threshold_index + 1
+                new_rating = experience_ratings[index]
                 ratings_matrix[new_user_id][new_experience_id] = new_rating
 
     return ratings_matrix
@@ -103,6 +104,50 @@ def average_images_matrix(images_indexes_for_id, n_experiences, ids_indexes, fea
     return images_matrix
 
 
+def calculate_binary_ratings(ratings_matrix):
+    """
+    Calculates experience ratings from average user ratings
+
+    :param ratings_matrix: matrix of user ratings
+    :returns:  binary ratings matrix
+    """
+
+    n_users = ratings_matrix.shape[0]
+    n_experiences = ratings_matrix.shape[1]
+
+    # Calculate average for each user (only non-zero values)
+    users_avg = []
+    for i in range(n_users):
+        ratings_sum = 0
+        n = 0
+        for j in range(n_experiences):
+            if ratings_matrix[i, j] != 0:
+                ratings_sum += ratings_matrix[i, j]
+                n += 1
+        average = ratings_sum / n
+        users_avg.append(average)
+
+    # Subtract user average from each rating
+    average_ratings_matrix = np.zeros(ratings_matrix.shape)
+    for i in range(n_users):
+        for j in range(n_experiences):
+            if ratings_matrix[i, j] != 0:
+                new_rating = ratings_matrix[i, j] - users_avg[i]
+                average_ratings_matrix[i, j] = new_rating
+
+    # Define new binary rating based on average rating
+    binary_ratings_matrix = np.zeros(ratings_matrix.shape)
+    for i in range(n_users):
+        for j in range(n_experiences):
+            if ratings_matrix[i, j] != 0:
+                if average_ratings_matrix[i, j] > 0:
+                    binary_ratings_matrix[i, j] = 2
+                else:
+                    binary_ratings_matrix[i, j] = 1
+
+    return binary_ratings_matrix
+
+
 def load_data(data_directory, booking_file, users_file, rating_thresholds):
     file_names = os.listdir(data_directory)
     img_ids_vector = [int(name.split('-')[0]) for name in file_names]
@@ -133,5 +178,6 @@ def load_data(data_directory, booking_file, users_file, rating_thresholds):
 
     ratings_matrix = load_ratings_data(booking_file, n_experiences, ids_indexes, rating_thresholds)
     users_matrix = load_users_data(users_file)
+    binary_ratings_matrix = calculate_binary_ratings(ratings_matrix)
 
-    return ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix
+    return binary_ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix

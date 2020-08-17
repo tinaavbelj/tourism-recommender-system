@@ -437,6 +437,9 @@ class ObjectSelection:
         relations = [fusion.Relation(R12, t1, t2, name='Ratings'),
                      fusion.Relation(R23, t2, t3, name='Images'),
                      fusion.Relation(R14, t1, t4, name='Users')]
+        print(R12.shape)
+        print(R23.shape)
+        print(R14.shape)
         fusion_graph = fusion.FusionGraph()
         fusion_graph.add_relations_from(relations)
 
@@ -511,7 +514,7 @@ class ObjectSelection:
         if evaluation_metric == 'rmse':
             score = rmse(ratings_true, ratings_predicted)
             print('\nrmse: ' + str(score))
-
+            return score
         # Auc
         if evaluation_metric == 'auc':
             if len(self.unique_ratings) == 2:
@@ -519,6 +522,7 @@ class ObjectSelection:
             else:
                 pass
             print('\nauc: ' + str(score))
+            return score
 
         # Label ranking loss
         if evaluation_metric == 'lrl':
@@ -540,5 +544,6 @@ class ObjectSelection:
             ratings_true = label_binarize(ratings_true, classes=[1, 2, 3])
             score = label_ranking_loss(ratings_true, ratings_predicted)
             print('\nlabel ranking loss: ' + str(score))
+            return score
 
 
