@@ -4,6 +4,7 @@ import random
 from utils import get_features
 from object_selection import ObjectSelection
 from load_data import load_data
+from basic_factorization import BasicFactorization
 
 
 def main():
@@ -36,6 +37,16 @@ def main():
     features = get_features(features_path, name_vector)
 
     cv_results_file = './results/cv-generated-data-r-2-n-8-2-knn.csv'
+
+    selection = BasicFactorization(show_selection_results=True, selection_algorithm='random')
+    selection.transform(ids=img_ids_vector, features=features, ratings=ratings_vector, users_ratings=ratings_matrix,
+                        users=users_matrix, cv_results_file=cv_results_file, images_indexes=images_indexes,
+                        true_objects_indexes=true_objects_indexes, false_objects_indexes=false_objects_indexes,
+                        paths=name_vector)
+    selection.evaluate(evaluation_metric='auc')
+
+    exit()
+
     selection = ObjectSelection(show_selection_results=True, selection_algorithm='knn')
     selection.transform(ids=img_ids_vector, features=features, ratings=ratings_vector, users_ratings=ratings_matrix,
                         users=users_matrix, cv_results_file=cv_results_file, images_indexes=images_indexes,

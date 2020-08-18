@@ -993,6 +993,18 @@ scipy = ["scipy"]
 
 [[package]]
 category = "main"
+description = "A Python module for nonnegative matrix factorization"
+name = "nimfa"
+optional = false
+python-versions = "*"
+version = "1.4.0"
+
+[package.dependencies]
+numpy = ">=1.7.0"
+scipy = ">=0.12.0"
+
+[[package]]
+category = "main"
 description = "Natural Language Toolkit"
 name = "nltk"
 optional = false
@@ -1939,7 +1951,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "103fd6fd7fb0326994003ad9f98934a3bc806eed0c738d13a4a2e96b46da6788"
+content-hash = "a601e3c9b986c0a78f660ff506e044cf481bfc565e6f9d62e245f0cefe767503"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -2479,6 +2491,10 @@ nbformat = [
 networkx = [
     {file = "networkx-2.4-py3-none-any.whl", hash = "sha256:cdfbf698749a5014bf2ed9db4a07a5295df1d3a53bf80bf3cbd61edf9df05fa1"},
     {file = "networkx-2.4.tar.gz", hash = "sha256:f8f4ff0b6f96e4f9b16af6b84622597b5334bf9cae8cf9b2e42e7985d5c95c64"},
+]
+nimfa = [
+    {file = "nimfa-1.4.0-py2.py3-none-any.whl", hash = "sha256:d9f2e1419c94524cec79e8d19291180707a2052ac2e25284edaba235d1575451"},
+    {file = "nimfa-1.4.0.tar.gz", hash = "sha256:39cff2b86856d03ca8a3d9c38598034ecf1a768c325fd3a728bb9eadb8c6b919"},
 ]
 nltk = [
     {file = "nltk-3.5.zip", hash = "sha256:845365449cd8c5f9731f7cb9f8bd6fd0767553b9d53af9eb1b3abf7700936b35"},
