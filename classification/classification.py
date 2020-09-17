@@ -16,6 +16,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_samples
 from sklearn.model_selection import train_test_split
 import numpy as np
+from matplotlib import rcParams
 
 from utils import get_features
 
@@ -375,7 +376,7 @@ class Classification:
         # Save predictions to a file
         self.save_results(results_file)
 
-    def violin_plot(self, values_to_plot='average'):
+    def violin_plot(self, values_to_plot='average', text_to_add=''):
         """
         Violin plot for specified values
 
@@ -385,31 +386,34 @@ class Classification:
         new_ratings_predicted = []
         title = ''
 
+        if text_to_add != '':
+            text_to_add = ' - ' + text_to_add
+
         for key in self.true_ratings_object.keys():
             if values_to_plot == 'average':
                 current_predicted = [float(i) for i in self.predicted_ratings_object[key]]
                 current_true = [float(i) for i in self.true_ratings_object[key]]
                 new_ratings_predicted.append(sum(current_predicted) / len(current_predicted))
                 new_ratings_true.append(sum(current_true) / len(current_true))
-                title = 'Povprečje vseh slik'
+                title = 'Povprečje vseh slik' + text_to_add
             elif values_to_plot == 'max':
                 current_predicted = sorted([float(i) for i in self.predicted_ratings_object[key]])[-3:]
                 current_true = [float(i) for i in self.true_ratings_object[key]][-3:]
                 new_ratings_predicted.append(sum(current_predicted) / len(current_predicted))
                 new_ratings_true.append(sum(current_true) / len(current_true))
-                title = 'Povprečje najboljših 3 slik'
+                title = 'Povprečje najboljših 3 slik' + text_to_add
             elif values_to_plot == 'min':
                 current_predicted = sorted([float(i) for i in self.predicted_ratings_object[key]])[:3]
                 current_true = [float(i) for i in self.true_ratings_object[key]][:3]
                 new_ratings_predicted.append(sum(current_predicted) / len(current_predicted))
                 new_ratings_true.append(sum(current_true) / len(current_true))
-                title = 'Povprečje najslabših 3 slik'
+                title = 'Povprečje najslabših 3 slik' + text_to_add
             elif values_to_plot == 'median':
                 current_predicted = [float(i) for i in self.predicted_ratings_object[key]]
                 current_true = [float(i) for i in self.true_ratings_object[key]]
                 new_ratings_predicted.append(median(current_predicted))
                 new_ratings_true.append(median(current_true))
-                title = 'Mediana vseh slik'
+                title = 'Mediana vseh slik' + text_to_add
 
         ratings_list = []
         for _ in self.unique_ratings:
@@ -421,6 +425,20 @@ class Classification:
         min_plot_value = float(min(self.unique_ratings)) - 0.5
         max_plot_value = float(max(self.unique_ratings)) + 0.5
 
+        SMALL_SIZE = 16
+        MEDIUM_SIZE = 16
+        BIGGER_SIZE = 22
+
+        rcParams.update({'figure.autolayout': True})
+        plt.tight_layout()
+        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
         plt.title(title)
         plt.ylabel('Napovedana vrednost')
         plt.xlabel('Pravilna vrednost')
@@ -428,7 +446,7 @@ class Classification:
         plt.violinplot(ratings_list)
         plt.show()
 
-    def evaluate(self):
+    def evaluate(self, text_to_add=''):
         """
         Evaluate classification results with classification accuracy, confusion matrix and violin plots
         """
@@ -451,13 +469,13 @@ class Classification:
         # Violin plots
 
         # Average of all images for provider
-        self.violin_plot(values_to_plot='average')
+        self.violin_plot(values_to_plot='average', text_to_add=text_to_add)
         # Average of max 3 images for provider
-        self.violin_plot(values_to_plot='max')
+        self.violin_plot(values_to_plot='max', text_to_add=text_to_add)
         # Average of min 3 images for provider
-        self.violin_plot(values_to_plot='min')
+        self.violin_plot(values_to_plot='min', text_to_add=text_to_add)
         # Median of all images for provider
-        self.violin_plot(values_to_plot='median')
+        self.violin_plot(values_to_plot='median', text_to_add=text_to_add)
 
 
 

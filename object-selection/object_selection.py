@@ -14,6 +14,7 @@ import math
 from os import path
 import copy
 from preselection import Preselection
+from scipy.stats import zscore
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
@@ -46,6 +47,8 @@ class ObjectSelection:
         self.predictions = []
         self.mask = []
         self.true_values = []
+        self.z_score = False
+        self.t = 0
 
     def save_objects_for_ids(self):
         """
@@ -132,6 +135,8 @@ class ObjectSelection:
             model = RandomForestClassifier()
         elif self.selection_algorithm == 'knn':
             model = KNeighborsClassifier(n_neighbors=3)
+        elif self.selection_algorithm == 'rf':
+            model = RandomForestClassifier()
         else:
             return self.get_random_objects()
 
@@ -270,7 +275,7 @@ class ObjectSelection:
             # Find indexes where rating != 0 and is not in the test set
             current_provider = X[:, j]
             for index, r in enumerate(current_provider):
-                if r != 0 and mask[index][j] != 1:
+                if mask[index][j] != 1 and r != 0:
                     indexes.append(index)
             indexes = np.array(indexes)
             random.shuffle(indexes)
@@ -322,6 +327,9 @@ class ObjectSelection:
 
         cv_masks = self.get_cv_masks(self.users_ratings, mask, k)
 
+        if self.z_score:
+            R12 = zscore(R12, axis=0)
+
         #best_cv_score = math.inf
         best_cv_score = 0
         best_p_t1 = 0
@@ -334,10 +342,10 @@ class ObjectSelection:
         all_p_t3 = []
         all_p_t4 = []
         all_scores = []
-        for p_t1 in parameters:
-            for p_t2 in parameters:
-                for p_t3 in parameters:
-                    for p_t4 in parameters:
+        for p_t1 in parameters[4:]:
+            for p_t2 in parameters[4:]:
+                for p_t3 in parameters[:4]:
+                    for p_t4 in parameters[:4]:
                         scores = []
                         for current_cv_mask in cv_masks:
                             t1 = fusion.ObjectType('Type 1', p_t1)
@@ -361,6 +369,21 @@ class ObjectSelection:
                             mask = current_cv_mask
                             true_values = R12
 
+                            if self.z_score:
+                                new_predictions = np.zeros(predictions.shape)
+                                for i in range(predictions.shape[0]):
+                                    for j in range(predictions.shape[1]):
+                                        if predictions[i][j] == 0:
+                                            new_predictions[i][j] = np.NaN
+                                        else:
+                                            new_predictions[i][j] = predictions[i][j]
+
+                                a = np.asanyarray(new_predictions)
+                                mns = np.nanmean(a=a, axis=0, keepdims=True)
+                                sstd = np.nanstd(a=a, axis=0, keepdims=True)
+
+                                predictions = (a * sstd) + mns
+
                             ratings_true = []
                             ratings_predicted = []
 
@@ -369,6 +392,21 @@ class ObjectSelection:
                                     if mask[i][j]:
                                         ratings_true.append(true_values[i][j])
                                         ratings_predicted.append(predictions[i][j])
+
+                            if self.z_score:
+                                new_ratings_true = []
+                                new_ratings_predicted = []
+                                for r_true, r_predicted in zip(ratings_true, ratings_predicted):
+                                    if r_true > 7:
+                                        new_ratings_true.append(2)
+                                    else:
+                                        new_ratings_true.append(1)
+                                    if r_predicted > 7:
+                                        new_ratings_predicted.append(2)
+                                    else:
+                                        new_ratings_predicted.append(1)
+                                ratings_true = new_ratings_true
+                                ratings_predicted = new_ratings_predicted
 
                             ratings_true = np.asarray(ratings_true)
                             ratings_predicted = np.asarray(ratings_predicted)
@@ -406,7 +444,7 @@ class ObjectSelection:
 
         return best_p_t1, best_p_t2, best_p_t3, best_p_t4
 
-    def factorization(self, cv_results_file):
+    def factorization(self, cv_results_file, use_user_data=True):
         """
         Matrix factorization, saves predictions to self.predictions and mask to self.mask
 
@@ -414,16 +452,39 @@ class ObjectSelection:
         """
         print('\nDfmf')
         selected_features = self.selected_features
+
+        r = []
+        for i in range(self.users_ratings.shape[0]):
+            for j in range(self.users_ratings.shape[1]):
+                if self.users_ratings[i][j] != 0:
+                    r.append(self.users_ratings[i][j])
+        r.sort()
+        t = r[round(len(r)/2)]
+        self.t = t
+
         mask = self.split_train_test(self.users_ratings, 0.2)
 
         R12 = self.users_ratings
         R23 = selected_features
         R14 = self.users
 
+        new_R12 = np.zeros(self.users_ratings.shape)
+        for i in range(self.users_ratings.shape[0]):
+            for j in range(self.users_ratings.shape[1]):
+                if self.users_ratings[i][j] == 0:
+                    new_R12[i][j] = np.NaN
+                else:
+                    new_R12[i][j] = self.users_ratings[i][j]
+
+        R12 = new_R12
+
+        if self.z_score:
+            R12 = zscore(R12, axis=0)
+
         # Parameters choice
         print('\nParameters\n')
         #parameters = [2, 4, 6, 8, 10]
-        parameters = [2, 4, 6, 8, 10, 12]
+        parameters = [2, 4, 6, 8, 10, 12, 14, 16, 18]
         k = 3
         best_p_t1, best_p_t2, best_p_t3, best_p_t4 = self.cross_validation(k, parameters, mask, R12, R23, R14, cv_results_file)
         print(str(best_p_t1) + ' ' + str(best_p_t2) + ' ' + str(best_p_t3) + ' ' + str(best_p_t4) + '\n')
@@ -434,12 +495,14 @@ class ObjectSelection:
         t3 = fusion.ObjectType('Type 3', best_p_t3)
         t4 = fusion.ObjectType('UserData', best_p_t4)
 
-        relations = [fusion.Relation(R12, t1, t2, name='Ratings'),
-                     fusion.Relation(R23, t2, t3, name='Images'),
-                     fusion.Relation(R14, t1, t4, name='Users')]
-        print(R12.shape)
-        print(R23.shape)
-        print(R14.shape)
+        if use_user_data:
+            relations = [fusion.Relation(R12, t1, t2, name='Ratings'),
+                         fusion.Relation(R23, t2, t3, name='Images'),
+                         fusion.Relation(R14, t1, t4, name='Users')]
+        else:
+            relations = [fusion.Relation(R12, t1, t2, name='Ratings'),
+                         fusion.Relation(R23, t2, t3, name='Images')]
+
         fusion_graph = fusion.FusionGraph()
         fusion_graph.add_relations_from(relations)
 
@@ -453,7 +516,7 @@ class ObjectSelection:
         self.mask = mask
         self.true_values = R12
 
-    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file, images_indexes, true_objects_indexes, false_objects_indexes, paths):
+    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file, images_indexes, true_objects_indexes, false_objects_indexes, paths, use_user_data=True, z_score=False):
         """
         Calculates latent matrices and saves ratings predictions
 
@@ -465,7 +528,7 @@ class ObjectSelection:
         :param cv_results_file: ile for saving cv scores
         """
         if self.selection_algorithm != 'random':
-            preselection = Preselection(true_objects_indexes, false_objects_indexes)
+            preselection = Preselection(true_objects_indexes, false_objects_indexes, self.selection_algorithm)
             ids, features, ratings = preselection.transform(paths, ids, ratings, features)
 
         self.ids = ids
@@ -475,13 +538,14 @@ class ObjectSelection:
         self.users = users
         self.unique_ratings = list(set(ratings))
         self.unique_ids = list(set(self.ids))
+        self.z_score = z_score
 
         self.save_objects_for_ids()
         self.save_ids_to_i()
 
         selected_objects_i_for_ids = self.object_selection()
         self.save_data_for_factorization(selected_objects_i_for_ids)
-        self.factorization(cv_results_file)
+        self.factorization(cv_results_file, use_user_data)
 
     def evaluate(self, evaluation_metric='auc'):
         """
@@ -498,6 +562,21 @@ class ObjectSelection:
         mask = self.mask
         true_values = self.true_values
 
+        if self.z_score:
+            new_predictions = np.zeros(predictions.shape)
+            for i in range(predictions.shape[0]):
+                for j in range(predictions.shape[1]):
+                    if predictions[i][j] == 0:
+                        new_predictions[i][j] = np.NaN
+                    else:
+                        new_predictions[i][j] = predictions[i][j]
+
+            a = np.asanyarray(new_predictions)
+            mns = np.nanmean(a=a, axis=0, keepdims=True)
+            sstd = np.nanstd(a=a, axis=0, keepdims=True)
+
+            predictions = (a * sstd) + mns
+
         ratings_true = []
         ratings_predicted = []
 
@@ -507,6 +586,24 @@ class ObjectSelection:
                     ratings_true.append(true_values[i][j])
                     ratings_predicted.append(predictions[i][j])
 
+        if True:
+            new_ratings_true = []
+            new_ratings_predicted = []
+            for r_true, r_predicted in zip(ratings_true, ratings_predicted):
+                #print(r_true)
+                #print(r_predicted)
+                #print()
+                if r_true > self.t:
+                    new_ratings_true.append(2)
+                else:
+                    new_ratings_true.append(1)
+                if r_predicted > self.t:
+                    new_ratings_predicted.append(2)
+                else:
+                    new_ratings_predicted.append(1)
+            ratings_true = new_ratings_true
+            ratings_predicted = new_ratings_predicted
+
         ratings_true = np.asarray(ratings_true)
         ratings_predicted = np.asarray(ratings_predicted)
 
@@ -515,12 +612,20 @@ class ObjectSelection:
             score = rmse(ratings_true, ratings_predicted)
             print('\nrmse: ' + str(score))
             return score
+        score = rmse(ratings_true, ratings_predicted)
+        print('\nrmse: ' + str(score))
+        score = roc_auc_score(ratings_true, ratings_predicted)
+        print('\nauc: ' + str(score))
+        return score
         # Auc
         if evaluation_metric == 'auc':
             if len(self.unique_ratings) == 2:
                 score = roc_auc_score(ratings_true, ratings_predicted)
             else:
                 pass
+
+            score = roc_auc_score(ratings_true, ratings_predicted)
+
             print('\nauc: ' + str(score))
             return score
 

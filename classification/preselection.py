@@ -10,10 +10,13 @@ from statistics import median
 from os import path
 import random
 from sklearn.model_selection import KFold
+import copy
+from matplotlib import rcParams
 
 from utils import get_features
 
-E = 0.001
+
+E = 0.005
 MAX_IT = 10
 
 
@@ -186,6 +189,55 @@ class Preselection:
         print()
         ca = 0
         ca_new = 1
+
+        # draw
+        data = copy.deepcopy(train_images_indexes)
+        data.sort()
+        n_bins = list(set(images_indexes)).sort()
+        print(n_bins)
+
+        print()
+        print('N TRUE: ')
+        print(len([x for x in train_images_indexes if int(x) in self.true_objects_indexes]))
+        print('N FALSE: ')
+        print(len([x for x in train_images_indexes if int(x) in self.false_objects_indexes]))
+        print()
+
+        SMALL_SIZE = 16
+        MEDIUM_SIZE = 16
+        BIGGER_SIZE = 22
+
+        rcParams.update({'figure.autolayout': True})
+        plt.tight_layout()
+        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        plt.xlabel('Indeks slike')
+        plt.ylabel('Število slik')
+        plt.title('Pred izbiranjem')
+        plt.ylim(0, 250)
+
+        _, _, patches = plt.hist(data, bins=n_bins)
+        # plt.show()
+
+        # fig, ax = plt.subplots()
+        # data = train_images_indexes
+
+        # N, bins, patches = ax.hist(data, edgecolor='white', linewidth=1)
+
+        print(len(self.true_objects_indexes))
+        print(len(self.false_objects_indexes))
+        for i in range(0, len(self.true_objects_indexes)):
+            patches[i].set_facecolor('b')
+        for i in range(len(self.true_objects_indexes), 10):
+            patches[i].set_facecolor('r')
+
+        plt.show()
+
         while current_it < MAX_IT and abs(ca - ca_new) > E:
             correct_indexes = []
             kf = KFold(n_splits=3)
@@ -224,9 +276,93 @@ class Preselection:
             print()
             print('- \n')
 
+            data = copy.deepcopy(train_images_indexes)
+            data = [int(x) for x in data]
+            data.sort()
+            n_bins = list(set(images_indexes)).sort()
+            print(n_bins)
+
+            print()
+            print('N TRUE: ')
+            print(len([x for x in train_images_indexes if int(x) in self.true_objects_indexes]))
+            print('N FALSE: ')
+            print(len([x for x in train_images_indexes if int(x) in self.false_objects_indexes]))
+            print()
+
+            SMALL_SIZE = 16
+            MEDIUM_SIZE = 16
+            BIGGER_SIZE = 22
+
+            rcParams.update({'figure.autolayout': True})
+            plt.tight_layout()
+            plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+            plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+            plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+            plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+            plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+            plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+            plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+            plt.xlabel('Indeks slike')
+            plt.ylabel('Število slik')
+            plt.title(str(current_it) + '. iteracija')
+            plt.ylim(0, 250)
+
+            _, _, patches = plt.hist(data, bins=n_bins)
+            #plt.show()
+
+            #fig, ax = plt.subplots()
+            #data = train_images_indexes
+
+            #N, bins, patches = ax.hist(data, edgecolor='white', linewidth=1)
+
+            for i in range(0, len(self.true_objects_indexes)):
+                patches[i].set_facecolor('b')
+            for i in range(len(self.true_objects_indexes), 10):
+                patches[i].set_facecolor('r')
+
+            plt.show()
+
+
         train_images_indexes.sort()
         n_bins = list(set(images_indexes)).sort()
         plt.hist(train_images_indexes, bins=n_bins)
+        plt.show()
+
+        fig, ax = plt.subplots()
+        data = train_images_indexes
+
+        print()
+        print('N TRUE: ')
+        print(len([x for x in train_images_indexes if int(x) in self.true_objects_indexes]))
+        print('N FALSE: ')
+        print(len([x for x in train_images_indexes if int(x) in self.false_objects_indexes]))
+        print()
+
+        SMALL_SIZE = 16
+        MEDIUM_SIZE = 16
+        BIGGER_SIZE = 22
+
+        plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+        plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+        plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        plt.xlabel('Indeks slike')
+        plt.ylabel('Število slik')
+        plt.title(str(current_it + 1) + '. iteracija')
+        plt.ylim(0, 250)
+
+        N, bins, patches = ax.hist(data, edgecolor='white', linewidth=1)
+
+        print(len(self.true_objects_indexes))
+        print(len(self.false_objects_indexes))
+        for i in range(0, len(self.true_objects_indexes)):
+            patches[i].set_facecolor('b')
+        for i in range(len(self.true_objects_indexes), 10):
+            patches[i].set_facecolor('r')
+
         plt.show()
 
         model = KNeighborsClassifier()

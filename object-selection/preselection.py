@@ -7,15 +7,18 @@ import random
 from sklearn.model_selection import KFold
 import numpy as np
 import copy
+from sklearn.ensemble import RandomForestClassifier
 
 E = 0.001
 MAX_IT = 10
+MIN_N = 1500
 
 
 class Preselection:
-    def __init__(self, true_objects_indexes, false_objects_indexes):
+    def __init__(self, true_objects_indexes, false_objects_indexes, algorithm='knn'):
         self.true_objects_indexes = true_objects_indexes
         self.false_objects_indexes = false_objects_indexes
+        self.algorithm = algorithm
 
         self.predicted_ratings_object = {}
         self.true_ratings_object = {}
@@ -130,14 +133,14 @@ class Preselection:
 
         current_it = 0
         X = np.array(features)
-        print(X.shape)
+        #print(X.shape)
         y = ratings_vector
         ids = ids_vector
         #train_images_indexes = [x for index, x in enumerate(images_indexes) if index in train_indexes]
 
         ca = 0
         ca_new = 1
-        while current_it < MAX_IT and abs(ca - ca_new) > E:
+        while current_it < MAX_IT and abs(ca - ca_new) > E and len(y) >= MIN_N:
             correct_indexes = []
             kf = KFold(n_splits=3)
             ca = ca_new
@@ -148,7 +151,10 @@ class Preselection:
                 current_test_y = [x for index, x in enumerate(y) if index in test_index]
                 #current_images_indexes = [x for index, x in enumerate(train_images_indexes) if index in test_index]
 
-                model = KNeighborsClassifier()
+                if self.algorithm == 'knn':
+                    model = KNeighborsClassifier(n_neighbors=3)
+                else:
+                    model = RandomForestClassifier()
                 model.fit(current_train_X, current_train_y)
                 predicted = model.predict(current_test_X)
                 current_ca = accuracy_score(current_test_y, predicted)
@@ -156,10 +162,10 @@ class Preselection:
                 correct_indexes = correct_indexes + [test_index[index] for index, p in enumerate(predicted) if p == current_test_y[index]]
 
             ca_new = sum(kfolds_ca) / len(kfolds_ca)
-            print('-')
-            print(len(correct_indexes))
-            print(ca_new)
-            print('-')
+            #print('-')
+            #print(len(correct_indexes))
+            #print(ca_new)
+            #print('-')
 
             previous_ids = copy.deepcopy(ids)
             ids = [x for index, x in enumerate(ids) if index in correct_indexes]
@@ -174,7 +180,7 @@ class Preselection:
                 missing_indexes.append(index_to_add)
 
             correct_indexes = correct_indexes + missing_indexes
-            ids = [x for index, x in enumerate(ids) if index in correct_indexes]
+            ids = [x for index, x in enumerate(previous_ids) if index in correct_indexes]
             X = X[correct_indexes]
             y = [x for index, x in enumerate(y) if index in correct_indexes]
 

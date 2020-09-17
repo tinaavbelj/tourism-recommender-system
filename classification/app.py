@@ -8,11 +8,13 @@ def main():
     # Preselection example
 
     # Parameters
-    data_directory = '../data/generated-data-r-2-n-3-3'
-    features_path = '../data/features-generated-data-r-2-n-3-3'
-    results_file = '/results-preselection/generated-data-r-2-n-3-3.csv'
-    true_objects_indexes = [0, 1, 2]
-    false_objects_indexes = [3, 4, 5]
+    data_directory = '../data/generated-data-r-2-n-6-4'
+    features_path = '../data/features-generated-data-r-2-n-6-4'
+    results_file = '/results-preselection/generated-data-r-2-n-6-4.csv'
+    #true_objects_indexes = [0, 1, 2, 3, 4, 5, 6, 7]
+    #false_objects_indexes = [8, 9]
+    true_objects_indexes = [0, 1, 2, 3, 4, 5]
+    false_objects_indexes = [6, 7, 8, 9]
 
     preselection = Preselection(data_directory, features_path, true_objects_indexes, false_objects_indexes)
     preselection.transform(results_file=results_file)

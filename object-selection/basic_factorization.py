@@ -13,8 +13,6 @@ from sklearn.metrics import roc_auc_score, label_ranking_loss
 from os import path
 import copy
 from preselection import Preselection
-import nimfa
-import scipy.sparse as spr
 
 
 SELECTION_ALGORITHM_VALUES = ['knn', 'rf', 'random']
@@ -417,36 +415,34 @@ class BasicFactorization:
         selected_features = self.selected_features
         mask = self.split_train_test(self.users_ratings, 0.2)
 
-        R12 = self.users_ratings
-        R23 = selected_features
-        R14 = self.users
-
-        # Parameters choice
-        print('\nParameters\n')
-        #parameters = [2, 4, 6, 8, 10]
-        parameters = [2, 4, 6, 8, 10, 12]
-        k = 3
-        #best_p_t1, best_p_t2, best_p_t3, best_p_t4 = self.cross_validation(k, parameters, mask, R12, R23, R14, cv_results_file)
-        #print(str(best_p_t1) + ' ' + str(best_p_t2) + ' ' + str(best_p_t3) + ' ' + str(best_p_t4) + '\n')
-
+        # best_p_t1, best_p_t2, best_p_t3, best_p_t4
         best_p_t1 = 12
         best_p_t2 = 12
-        best_p_t3 = 2
-        best_p_t4 = 2
 
-        V = spr.csr_matrix(R12)
-        #V.todense()
+        R12 = self.users_ratings
 
-        nmf = nimfa.Nmf(V, max_iter=200, rank=5, update='euclidean', objective='fro')
-        nmf_fit = nmf()
+        new_R12 = np.zeros(R12.shape)
+        for i in range(R12.shape[0]):
+            for j in range(R12.shape[1]):
+                if R12[i][j] == 0:
+                    new_R12[i][j] = np.NaN
+                else:
+                    new_R12[i][j] = R12[i][j]
+        R12 = new_R12
 
-        W = nmf_fit.basis()
+        # Predictions
+        t1 = fusion.ObjectType('Type 1', best_p_t1)
+        t2 = fusion.ObjectType('Type 2', best_p_t2)
 
-        H = nmf_fit.coef()
+        relations = [fusion.Relation(R12, t1, t2, name='Ratings')]
+        fusion_graph = fusion.FusionGraph()
+        fusion_graph.add_relations_from(relations)
 
-        sm = nmf_fit.summary()
-        #R12_pred = np.dot(W.todense(), H.todense())
-        R12_pred = np.dot(W, H)
+        fuser = fusion.Dfmf(init_type="random_vcol")
+        fusion_graph['Ratings'].mask = mask
+        dfmf_mod = fuser.fuse(fusion_graph)
+
+        R12_pred = dfmf_mod.complete(fusion_graph['Ratings'])
 
         self.predictions = R12_pred
         self.mask = mask
@@ -506,6 +502,27 @@ class BasicFactorization:
                     ratings_true.append(true_values[i, j])
                     ratings_predicted.append(predictions[i, j])
 
+        if True:
+            new_ratings_true = []
+            new_ratings_predicted = []
+            for r_true, r_predicted in zip(ratings_true, ratings_predicted):
+                #print(r_true)
+                #print(r_predicted)
+                #print()
+                if r_true > 7:
+                    new_ratings_true.append(2)
+                else:
+                    new_ratings_true.append(1)
+                if r_predicted > 7:
+                    new_ratings_predicted.append(2)
+                else:
+                    new_ratings_predicted.append(1)
+            ratings_true = new_ratings_true
+            ratings_predicted = new_ratings_predicted
+
+        ratings_true = np.asarray(ratings_true)
+        ratings_predicted = np.asarray(ratings_predicted)
+
         ratings_true = np.asarray(ratings_true)
         ratings_predicted = np.asarray(ratings_predicted)
 
@@ -516,7 +533,8 @@ class BasicFactorization:
             return score
         # Auc
         if evaluation_metric == 'auc':
-            if len(self.unique_ratings) == 2:
+            #if len(self.unique_ratings) == 2:
+            if True:
                 score = roc_auc_score(ratings_true, ratings_predicted)
             else:
                 pass

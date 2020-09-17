@@ -66,12 +66,14 @@ def load_ratings_data(booking_file, n_experiences, ids_indexes, rating_threshold
             # If this experience exists in generated pictures
             if int(experience_ids_booking[index]) in ids_indexes.keys():
                 new_experience_id = ids_indexes[experience_ids_booking[index]]
-                #right_threshold_index = 0
-                #for t_index, threshold in enumerate(rating_thresholds):
-                #    if experience_ratings[index] >= threshold:
-                #        right_threshold_index = t_index
-                #new_rating = right_threshold_index + 1
-                new_rating = experience_ratings[index]
+                if len(rating_thresholds) > 0:
+                    right_threshold_index = 0
+                    for t_index, threshold in enumerate(rating_thresholds):
+                        if experience_ratings[index] >= threshold:
+                            right_threshold_index = t_index
+                    new_rating = right_threshold_index + 1
+                else:
+                    new_rating = experience_ratings[index]
                 ratings_matrix[new_user_id][new_experience_id] = new_rating
 
     return ratings_matrix
@@ -148,7 +150,7 @@ def calculate_binary_ratings(ratings_matrix):
     return binary_ratings_matrix
 
 
-def load_data(data_directory, booking_file, users_file, rating_thresholds):
+def load_data(data_directory, booking_file, users_file, rating_thresholds=[], binary=False):
     file_names = os.listdir(data_directory)
     img_ids_vector = [int(name.split('-')[0]) for name in file_names]
 
@@ -178,6 +180,8 @@ def load_data(data_directory, booking_file, users_file, rating_thresholds):
 
     ratings_matrix = load_ratings_data(booking_file, n_experiences, ids_indexes, rating_thresholds)
     users_matrix = load_users_data(users_file)
-    binary_ratings_matrix = calculate_binary_ratings(ratings_matrix)
+    if binary:
+        binary_ratings_matrix = calculate_binary_ratings(ratings_matrix)
+        ratings_matrix = binary_ratings_matrix
 
-    return binary_ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix
+    return ratings_matrix, images_indexes_for_id, ids_indexes, users_matrix
