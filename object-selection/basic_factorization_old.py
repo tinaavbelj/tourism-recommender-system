@@ -46,9 +46,6 @@ class BasicFactorization:
         self.mask = []
         self.true_values = []
         self.t = 6
-        self.z_score = False
-        self.mns = 0
-        self.sstd = 0
 
     def save_objects_for_ids(self):
         """
@@ -334,7 +331,6 @@ class BasicFactorization:
         all_p_t2 = []
         all_t = []
         all_scores = []
-        original_R12 = R12.copy()
         for p_t1 in parameters:
             for p_t2 in parameters:
                 for t in parameters_t:
@@ -343,36 +339,19 @@ class BasicFactorization:
                         t1 = fusion.ObjectType('Type 1', p_t1)
                         t2 = fusion.ObjectType('Type 2', p_t2)
 
-                        R12 = original_R12.copy()
-
-                        for i in range(current_cv_mask.shape[0]):
-                            for j in range(current_cv_mask.shape[1]):
-                                if current_cv_mask[i][j] or original_R12[i, j] == 0:
-                                    R12[i][j] = np.NaN
-
-                        mns = 0
-                        sstd = 0
-                        if self.z_score:
-                            mns = np.nanmean(a=R12, axis=0, keepdims=True)
-                            sstd = np.nanstd(a=R12, axis=0, keepdims=True)
-                            R12 = (R12 - mns) / sstd
-
                         relations = [fusion.Relation(R12, t1, t2, name='Ratings')]
                         fusion_graph = fusion.FusionGraph()
                         fusion_graph.add_relations_from(relations)
 
                         fuser = fusion.Dfmf(init_type="random_vcol")
-                        #fusion_graph['Ratings'].mask = current_cv_mask
+                        fusion_graph['Ratings'].mask = current_cv_mask
                         dfmf_mod = fuser.fuse(fusion_graph)
 
                         R12_pred = dfmf_mod.complete(fusion_graph['Ratings'])
 
                         predictions = R12_pred
                         mask = current_cv_mask
-                        true_values = original_R12
-
-                        if self.z_score:
-                            predictions = (predictions * sstd) + mns
+                        true_values = R12
 
                         ratings_true = []
                         ratings_predicted = []
@@ -397,13 +376,11 @@ class BasicFactorization:
                         ratings_true = new_ratings_true
                         ratings_predicted = new_ratings_predicted
 
-
                         ratings_true = np.asarray(ratings_true)
                         ratings_predicted = np.asarray(ratings_predicted)
 
                         # Rmse
                         score = roc_auc_score(ratings_true, ratings_predicted)
-                        print(score)
                         #score = rmse(ratings_true, ratings_predicted)
                         #print('\nrmse: ' + str(score))
                         scores.append(score)
@@ -443,18 +420,6 @@ class BasicFactorization:
 
         R12 = self.users_ratings
 
-        # best_p_t1, best_p_t2, best_p_t3, best_p_t4
-        best_p_t1 = 100
-        best_p_t2 = 100
-
-        t = [6, 7, 8]
-        parameters = [2, 4, 6, 8, 10, 50, 75, 100, 125, 150]
-        k = 3
-        #best_p_t1, best_p_t2, best_p_t3, best_p_t4, t = 70, 70, 8, 10, 6
-        best_p_t1, best_p_t2, best_t = self.cross_validation(k, parameters, t, mask, R12, cv_results_file)
-        print(str(best_p_t1) + ' ' + str(best_p_t2) + ' ' + str(best_t) + '\n')
-        self.t = best_t
-
         new_R12 = np.zeros(R12.shape)
         for i in range(R12.shape[0]):
             for j in range(R12.shape[1]):
@@ -462,40 +427,40 @@ class BasicFactorization:
                     new_R12[i][j] = np.NaN
                 else:
                     new_R12[i][j] = R12[i][j]
-        R12 = new_R12.copy()
-        #R12 = new_R12
+        R12 = new_R12
 
-        if self.z_score:
-            mns = np.nanmean(a=R12, axis=0, keepdims=True)
-            sstd = np.nanstd(a=R12, axis=0, keepdims=True)
-            R12 = (R12 - mns) / sstd
-            self.mns = mns
-            self.sstd = sstd
+        # best_p_t1, best_p_t2, best_p_t3, best_p_t4
+        best_p_t1 = 100
+        best_p_t2 = 100
+
+        t = [6, 7, 8]
+        parameters = [10, 50, 100, 200, 400]
+        k = 3
+        #best_p_t1, best_p_t2, best_p_t3, best_p_t4, t = 70, 70, 8, 10, 6
+        #print(self.cross_validation(k, parameters, t, mask, R12, cv_results_file))
+        best_p_t1, best_p_t2, best_t = self.cross_validation(k, parameters, t, mask, R12, cv_results_file)
+        print(str(best_p_t1) + ' ' + str(best_p_t2) + ' ' + str(best_t) + '\n')
+        self.t = best_t
 
         # Predictions
         t1 = fusion.ObjectType('Type 1', best_p_t1)
         t2 = fusion.ObjectType('Type 2', best_p_t2)
-
-        for i in range(mask.shape[0]):
-            for j in range(mask.shape[1]):
-                if mask[i][j]:
-                    R12[i][j] = np.NaN
 
         relations = [fusion.Relation(R12, t1, t2, name='Ratings')]
         fusion_graph = fusion.FusionGraph()
         fusion_graph.add_relations_from(relations)
 
         fuser = fusion.Dfmf(init_type="random_vcol")
-        #fusion_graph['Ratings'].mask = mask.astype('bool')
+        fusion_graph['Ratings'].mask = mask.astype('bool')
         dfmf_mod = fuser.fuse(fusion_graph)
 
         R12_pred = dfmf_mod.complete(fusion_graph['Ratings'])
 
         self.predictions = R12_pred
         self.mask = mask
-        self.true_values = new_R12
+        self.true_values = R12
 
-    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file, images_indexes, true_objects_indexes, false_objects_indexes, paths, z_score=False):
+    def transform(self, ids, features, ratings, users_ratings, users, cv_results_file, images_indexes, true_objects_indexes, false_objects_indexes, paths):
         """
         Calculates latent matrices and saves ratings predictions
 
@@ -517,7 +482,6 @@ class BasicFactorization:
         self.users = users
         self.unique_ratings = list(set(ratings))
         self.unique_ids = list(set(self.ids))
-        self.z_score = z_score
 
         self.save_objects_for_ids()
         self.save_ids_to_i()
@@ -540,12 +504,6 @@ class BasicFactorization:
         predictions = self.predictions
         mask = self.mask
         true_values = self.true_values
-
-        if self.z_score:
-            a = np.asanyarray(predictions)
-            mns = self.mns
-            sstd = self.sstd
-            predictions = (a * sstd) + mns
 
         ratings_true = []
         ratings_predicted = []

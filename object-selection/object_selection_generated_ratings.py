@@ -509,7 +509,7 @@ class ObjectSelectionGeneratedRatings:
         fusion_graph.add_relations_from(relations)
 
         fuser = fusion.Dfmf(init_type="random_vcol")
-        fusion_graph['Ratings'].mask = mask
+        fusion_graph['Ratings'].mask = mask.astype('bool')
         dfmf_mod = fuser.fuse(fusion_graph)
 
         R12_pred = dfmf_mod.complete(fusion_graph['Ratings'])
