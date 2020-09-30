@@ -448,7 +448,7 @@ class BasicFactorization:
         best_p_t2 = 100
 
         t = [6, 7, 8]
-        parameters = [2, 4, 6, 8, 10, 50, 75, 100]
+        parameters = [2, 4, 6, 8, 10, 15, 20]
         k = 3
         #best_p_t1, best_p_t2, best_p_t3, best_p_t4, t = 70, 70, 8, 10, 6
         best_p_t1, best_p_t2, best_t = self.cross_validation(k, parameters, t, mask, R12, cv_results_file)
