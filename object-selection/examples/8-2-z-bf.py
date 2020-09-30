@@ -3,13 +3,9 @@ import sys
 parent_dir = os.path.split(os.getcwd())[0]
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
-import random
-from sklearn.cluster import FeatureAgglomeration
 
 from utils import get_features, save_scores
-from object_selection import ObjectSelection
 from load_data import load_data
-from basic_factorization_nimfa import BasicFactorizationNmf
 from basic_factorization import BasicFactorization
 
 
