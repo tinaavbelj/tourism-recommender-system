@@ -448,6 +448,8 @@ class ObjectSelection:
                             all_scores.append(score)
                             all_scores_rmse.append(score_rmse)
 
+                            print(score)
+
                             # Save best scores to a variable
 
                             if score >= best_cv_score:
@@ -506,6 +508,8 @@ class ObjectSelection:
         # Parameters choice
         parameters_k1 = [2, 5, 10, 20, 50, 75, 100, 125, 150]
         parameters_k2 = [2, 5, 10, 20, 50, 75, 100, 125, 150]
+        parameters_k1 = [2, 5, 10, 15,  20]
+        parameters_k2 = [2, 5, 10, 15,  20]
         parameters_k3 = [2, 4, 6, 8, 10, 12]
         parameters_k4 = [2, 4, 6, 8, 10, 12]
         t = [6, 7, 8]
