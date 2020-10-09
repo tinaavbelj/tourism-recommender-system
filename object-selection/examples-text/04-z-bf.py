@@ -40,12 +40,12 @@ ids_vector = new_ids_vector
 scores_auc = []
 scores_rmse = []
 for i in range(10):
-    cv_results_file = '../results/cv-generated-data-r-10-n-04-bf-' + str(i) + '.csv'
+    cv_results_file = '../results/cv-generated-data-r-10-n-04-z-bf-' + str(i) + '.csv'
     selection = BasicFactorization(show_selection_results=False, selection_algorithm='random')
     selection.transform(ids=ids_vector, features=features, ratings=ratings_vector, users_ratings=ratings_matrix,
                         users=users_matrix, cv_results_file=cv_results_file, images_indexes=text_indexes,
                         true_objects_indexes=true_objects_indexes, false_objects_indexes=false_objects_indexes,
-                        paths=name_vector)
+                        paths=name_vector, z_score=True)
     score_auc, score_rmse = selection.evaluate(evaluation_metric='auc')
     scores_auc.append(score_auc)
     scores_rmse.append(score_rmse)
@@ -56,7 +56,7 @@ plt.plot(scores_auc)
 plt.ylabel('AUC')
 plt.show()
 
-results_file = '../scores/generated-data-r-10-n-04-bf-auc.csv'
+results_file = '../scores/generated-data-r-10-n-04-z-bf-auc.csv'
 save_scores(scores_auc, results_file)
-results_file = '../scores/generated-data-r-10-n-04-bf-rmse.csv'
+results_file = '../scores/generated-data-r-10-n-04-z-bf-rmse.csv'
 save_scores(scores_rmse, results_file)
